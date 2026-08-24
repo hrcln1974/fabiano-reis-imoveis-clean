@@ -1,0 +1,15 @@
+FABIANO REIS IMÓVEIS — PRODUÇÃO 1.0.0
+CLEAN BUILD
+
+This package is independent of previous releases.
+No database is included.
+No previous uploads are included.
+Initial institutional media only:
+- public/uploads/imagens/foto-corretor-v5.png
+- public/uploads/imagens/banner-alto-padrao.png
+
+Leads:
+- GET /api/leads
+- PUT /api/leads/:id
+- DELETE /api/leads/:id
+- Dashboard has explicit "🗑️ Excluir" action.

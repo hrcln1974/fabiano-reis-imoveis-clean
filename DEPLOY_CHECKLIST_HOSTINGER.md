@@ -1,0 +1,24 @@
+# Checklist de Produção 1.0.0
+
+- [ ] Node 22.x configurado
+- [ ] `NODE_ENV=production`
+- [ ] `JWT_SECRET` forte configurado
+- [ ] `SQLITE_FILE` aponta para armazenamento persistente novo
+- [ ] `MEDIA_ROOT` aponta para armazenamento persistente novo
+- [ ] `STORAGE_PROVIDER=local`
+- [ ] `npm ci --omit=dev` concluído
+- [ ] `npm run check:syntax` aprovado
+- [ ] `npm run production:gate` aprovado
+- [ ] administrador criado
+- [ ] login aprovado
+- [ ] cadastro de imóvel aprovado
+- [ ] upload de foto aprovado
+- [ ] exclusão de foto aprovada
+- [ ] vídeo/YouTube aprovado
+- [ ] criação de lead aprovada
+- [ ] alteração de status de lead aprovada
+- [ ] exclusão definitiva de lead aprovada
+- [ ] WhatsApp aprovado
+- [ ] mobile aprovado
+- [ ] SEO básico aprovado
+- [ ] domínio definitivo apontado somente após os testes

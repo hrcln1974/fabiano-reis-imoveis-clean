@@ -1,0 +1,53 @@
+# Storage persistente da aplicação
+storage/uploads/*
+!storage/uploads/README.txt
+!storage/uploads/imagens/.gitkeep
+!storage/uploads/videos/.gitkeep# Segredos e ambiente
+.env
+# Storage persistente da aplicação
+storage/uploads/*
+!storage/uploads/README.txt
+!storage/uploads/imagens/.gitkeep
+!storage/uploads/videos/.gitkeep
+.env.*
+!.env.example
+
+# Dependências e build
+node_modules/
+release/
+*.tgz
+
+# Banco local de desenvolvimento (nunca versionar dados)
+database.db
+database.db-wal
+database.db-shm
+*.sqlite
+*.sqlite3
+
+# Backups e dumps (contêm dados reais de clientes)
+backups/
+*.dump
+*.sql.gz
+
+# Mídia enviada pelo corretor (fica no storage persistente, não no Git)
+public/uploads/imagens/*
+public/uploads/videos/*
+!public/uploads/README.txt
+!public/uploads/imagens/.gitkeep
+!public/uploads/videos/.gitkeep
+
+# Logs e temporários
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vercel
+
+*.db
+coverage/
+# Storage persistente da aplicação
+storage/uploads/*
+!storage/uploads/README.txt
+!storage/uploads/imagens/.gitkeep
+!storage/uploads/videos/.gitkeep
