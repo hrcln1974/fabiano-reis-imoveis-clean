@@ -977,16 +977,32 @@ body {
 }
 
 
-/* ============= responsividade — RESPONSIVIDADE REAL ============= */
-html { scroll-behavior: smooth; }
-img, video { max-width: 100%; }
-button, input, select, textarea { max-width: 100%; }
+/* ============= RESPONSIVIDADE REAL ============= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+/* ============= BANNER DESKTOP ============= */
 
 .banner {
   min-height: 0;
   background: #0b0b0b;
   width: 100%;
 }
+
 .banner-img {
   position: relative;
   inset: auto;
@@ -996,6 +1012,31 @@ button, input, select, textarea { max-width: 100%; }
   max-height: 620px;
   object-fit: contain;
   object-position: center;
+}
+
+.banner-overlay {
+  display: none;
+}
+
+/* ============= BANNER CELULAR ============= */
+
+@media (max-width: 768px) {
+
+  .banner {
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .banner-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: cover;
+    object-position: center center;
+  }
+
 }
 .banner-overlay { display: none; }
 

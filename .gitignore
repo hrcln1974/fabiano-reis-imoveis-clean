@@ -31,6 +31,7 @@ backups/
 
 # Mídia enviada pelo corretor (fica no storage persistente, não no Git)
 public/uploads/imagens/*
+!public/uploads/imagens/fabiano.png
 public/uploads/videos/*
 !public/uploads/README.txt
 !public/uploads/imagens/.gitkeep
