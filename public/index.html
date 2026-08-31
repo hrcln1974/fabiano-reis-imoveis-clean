@@ -46,13 +46,16 @@
     </div>
   </nav>
 
-  <!-- BANNER PRINCIPAL — referência visual do projeto original, sem crop -->
+  <!-- BANNER PRINCIPAL — arte horizontal no desktop e arte quadrada no celular -->
   <section id="inicio" class="banner fr-banner-premium" aria-labelledby="hero-title">
-    <img src="/uploads/imagens/banner-alto-padrao.png"
-         alt="Imobiliária Fabiano Reis — imóveis de alto padrão"
-         class="banner-img" fetchpriority="high" decoding="async"
-         width="1983" height="793"
-         onerror="this.onerror=null;this.src='/img/placeholder.svg';">
+    <picture>
+      <source media="(max-width: 768px)" srcset="/uploads/imagens/fabiano.png">
+      <img src="/uploads/imagens/banner-alto-padrao.png"
+           alt="Imobiliária Fabiano Reis — imóveis de alto padrão"
+           class="banner-img" fetchpriority="high" decoding="async"
+           width="1983" height="793"
+           onerror="this.onerror=null;this.src='/img/placeholder.svg';">
+    </picture>
     <h1 id="hero-title" class="sr-only">Fabiano Reis Imóveis — compra, venda e aluguel de imóveis (CRECI-RJ 93.426)</h1>
   </section>
 
