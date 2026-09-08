@@ -14,6 +14,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const sharp = require('sharp');
 
 const PORT = Number(process.env.SMOKE_PORT || 3199);
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -122,18 +123,81 @@ async function main() {
     check('cadastro de imóvel válido retorna id', criado.status === 200 && Number(criado.data?.id) > 0, JSON.stringify(criado.data));
     const imovelId = criado.data?.id;
 
+    // Compatibilidade do catálogo: todos os novos tipos devem ser aceitos
+    // pela mesma validação server-side usada no cadastro real.
+    const novosTipos = [
+      'sobrado',
+      'casa geminada',
+      'studio',
+      'loft',
+      'cobertura',
+      'casa em condomínio',
+      'loja / ponto comercial',
+      'galpão',
+      'sitios, chácaras e fazendas',
+      'terrenos e lotes'
+    ];
+    for (const tipoTeste of novosTipos) {
+      const testeTipo = await api('POST', '/api/imoveis', {
+        auth: true,
+        body: {
+          titulo: `Teste tipo ${tipoTeste}`,
+          descricao: 'Registro temporário do smoke test.',
+          preco: 100000,
+          tipo: tipoTeste,
+          operacao: 'venda',
+          endereco: 'Rua de Teste',
+          numero: '101',
+          bairro: 'Centro',
+          cidade: 'Rio de Janeiro',
+          area: 50
+        }
+      });
+      check(`novo tipo "${tipoTeste}" aceito`, testeTipo.status === 200, JSON.stringify(testeTipo.data));
+    }
+
     const lista = await api('GET', '/api/imoveis');
     check('listagem pública traz o imóvel ativo', Array.isArray(lista.data?.imoveis) && lista.data.imoveis.some(i => i.id === imovelId));
 
     const semAuthCriar = await api('POST', '/api/imoveis', { body: { titulo: 'sem auth', preco: 1, tipo: 'casa', operacao: 'venda', endereco: 'a', bairro: 'b', cidade: 'c' } });
     check('cadastro de imóvel sem sessão retorna 401', semAuthCriar.status === 401, semAuthCriar.status);
 
-    // Upload de foto (JPEG mínimo válido) e formato bloqueado
-    const jpeg = Buffer.from('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAf/AABEIAAEAAQMBIgACEQEDEQH/xABKAAEBAAAAAAAAAAAAAAAAAAAACf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/AA//2Q==', 'base64');
+    // Upload de foto JPEG válido e formato bloqueado.
+    // O JPEG é gerado pelo próprio Sharp para que o teste não dependa de
+    // um fixture mínimo que pode ser aceito pelo magic-byte check, mas recusado
+    // por decodificadores de imagem reais.
+    const jpeg = await sharp({
+      create: {
+        width: 640,
+        height: 480,
+        channels: 3,
+        background: { r: 210, g: 210, b: 210 }
+      }
+    }).jpeg({ quality: 90 }).toBuffer();
+
     const formFoto = new FormData();
     formFoto.append('imagens', new Blob([jpeg], { type: 'image/jpeg' }), 'teste.jpg');
     const upFoto = await api('POST', `/api/imoveis/${imovelId}/fotos`, { auth: true, form: formFoto });
     check('upload de foto JPEG aceito', upFoto.status === 200, JSON.stringify(upFoto.data));
+
+    const fotoPublica = String((upFoto.data?.imagens || [])[0] || '');
+    check(
+      'foto pública usa arquivo protegido',
+      upFoto.status === 200 && fotoPublica.startsWith('/uploads/imagens/') && /-wm\.jpg$/i.test(fotoPublica),
+      fotoPublica
+    );
+
+    if (fotoPublica) {
+      const fotoRes = await fetch(`${BASE}${fotoPublica}`);
+      const fotoBuffer = Buffer.from(await fotoRes.arrayBuffer());
+      let fotoMeta = null;
+      try { fotoMeta = await sharp(fotoBuffer).metadata(); } catch (_) {}
+      check(
+        'foto pública é uma imagem JPEG processada',
+        fotoRes.ok && fotoMeta?.format === 'jpeg' && fotoMeta?.width === 640 && fotoMeta?.height === 480,
+        `${fotoRes.status} ${fotoMeta?.format || 'inválida'}`
+      );
+    }
 
     const formRuim = new FormData();
     formRuim.append('imagens', new Blob([Buffer.from('MZ')], { type: 'application/octet-stream' }), 'malicioso.exe');
@@ -160,7 +224,7 @@ async function main() {
 
     // produção — path traversal no nome do arquivo é neutralizado.
     const formTrav = new FormData();
-    formTrav.append('imagens', new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' }), '../../../../etc/passwd.jpg');
+    formTrav.append('imagens', new Blob([jpeg], { type: 'image/jpeg' }), '../../../../etc/passwd.jpg');
     const upTrav = await api('POST', `/api/imoveis/${imovelId}/fotos`, { auth: true, form: formTrav });
     const caminhoTrav = String((upTrav.data?.imagens || [])[0] || '');
     check(

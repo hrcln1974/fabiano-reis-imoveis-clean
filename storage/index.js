@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const watermark = require('./watermark');
 
 const provider = String(process.env.STORAGE_PROVIDER || 'local').trim().toLowerCase();
 if (provider !== 'local') {
@@ -114,14 +115,40 @@ function multerStorage(folder) {
 async function uploadFile(file, folder) {
   if (!file) throw new Error('Arquivo não enviado.');
   garantirDiretorios();
+
   if (file.path) {
     const expectedRoot = path.resolve(mediaRoot, folder) + path.sep;
     const actual = path.resolve(file.path);
     if (!actual.startsWith(expectedRoot)) throw new Error('Caminho de mídia inválido.');
+
+    // Fotos de imóveis entram no site somente depois de receber a
+    // marca d'água incorporada no próprio arquivo.
+    if (folder === 'imagens' && IMAGE_MIMES.has(String(file.mimetype || '').toLowerCase())) {
+      try {
+        const protectedImage = await watermark.processImageFile(actual, file.originalname);
+        return protectedImage.url;
+      } catch (err) {
+        // Nunca deixar um original sem proteção abandonado no storage.
+        await fs.promises.unlink(actual).catch(() => {});
+        throw new Error(`Não foi possível aplicar a marca d'água: ${err.message}`);
+      }
+    }
+
     return `/uploads/${folder}/${path.basename(actual)}`;
   }
+
   const filename = safeFilename(file.originalname);
   const target = path.join(mediaRoot, folder, filename);
+
+  if (folder === 'imagens' && IMAGE_MIMES.has(String(file.mimetype || '').toLowerCase())) {
+    const protectedImage = await watermark.processImageBuffer(
+      file.buffer,
+      file.originalname,
+      path.join(mediaRoot, folder)
+    );
+    return protectedImage.url;
+  }
+
   await fs.promises.writeFile(target, file.buffer);
   return `/uploads/${folder}/${filename}`;
 }
@@ -129,6 +156,16 @@ async function uploadFile(file, folder) {
 async function uploadBuffer(buffer, filename, contentType, folder) {
   if (!Buffer.isBuffer(buffer)) throw new Error('Buffer de mídia inválido.');
   garantirDiretorios();
+
+  if (folder === 'imagens' && IMAGE_MIMES.has(String(contentType || '').toLowerCase())) {
+    const protectedImage = await watermark.processImageBuffer(
+      buffer,
+      filename,
+      path.join(mediaRoot, folder)
+    );
+    return protectedImage.url;
+  }
+
   const safe = path.basename(String(filename || 'arquivo.bin')).replace(/[^a-zA-Z0-9._-]/g, '_');
   await fs.promises.writeFile(path.join(mediaRoot, folder, safe), buffer);
   return `/uploads/${folder}/${safe}`;

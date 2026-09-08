@@ -968,7 +968,26 @@ app.get('/api/imoveis/:id', (req, res) => {
   });
 });
 
-const TIPOS_IMOVEL = ['casa', 'apartamento', 'terreno', 'comercial', 'sitio', 'chacara', 'cobertura', 'kitnet', 'sobrado', 'galpao', 'outro'];
+const TIPOS_IMOVEL = [
+  'casa',
+  'apartamento',
+  'comercial',
+  'sobrado',
+  'casa geminada',
+  'kitnet',
+  'studio',
+  'loft',
+  'cobertura',
+  'casa em condomínio',
+  'loja / ponto comercial',
+  'galpão',
+  'sitios, chácaras e fazendas',
+  'terrenos e lotes',
+  'terreno',
+  'sitio',
+  'chacara',
+  'outro'
+];
 const OPERACOES_IMOVEL = ['venda', 'aluguel', 'venda-aluguel'];
 
 // Validação/normalização usada no cadastro de imóveis (server-side, obrigatória).
