@@ -241,6 +241,28 @@ async function main() {
     const midias = await api('GET', `/api/imoveis/${imovelId}/midias`);
     check('mídias do imóvel listadas (foto + vídeo)', (midias.data?.midias || []).length >= 2, JSON.stringify(midias.data).slice(0, 120));
 
+    // Backup/exportação e importação de imóveis: valida que o backup contém mídias
+    // e que o modo atualizar não apaga nem duplica o cadastro.
+    const exportJson = await api('GET', '/api/admin/imoveis/export.json', { auth: true });
+    check('exportação de imóveis JSON retorna 200', exportJson.status === 200);
+    const exportLista = exportJson.data?.imoveis || [];
+    check('exportação inclui o imóvel de teste', exportLista.some(i => Number(i.id) === Number(imovelId)));
+    const exportItem = exportLista.find(i => Number(i.id) === Number(imovelId));
+    check('exportação inclui referências de mídia', Array.isArray(exportItem?.midias) && exportItem.midias.length >= 2);
+
+    const importAtualizar = await api('POST', '/api/admin/imoveis/import.json', {
+      auth: true,
+      body: { modo: 'atualizar', imoveis: [{
+        ...exportItem,
+        titulo: 'Imóvel de teste automatizado atualizado',
+        preco: 275000
+      }] }
+    });
+    check('importação em modo atualizar retorna 200', importAtualizar.status === 200, JSON.stringify(importAtualizar.data));
+    check('importação atualizou o registro existente', Number(importAtualizar.data?.atualizados) === 1 && Number(importAtualizar.data?.adicionados) === 0);
+    const aposImportacao = await api('GET', `/api/imoveis/${imovelId}`, { auth: true });
+    check('imóvel atualizado permanece disponível após importação', aposImportacao.status === 200 && aposImportacao.data?.imovel?.titulo === 'Imóvel de teste automatizado atualizado');
+
     const leadRuim = await api('POST', '/api/leads', { body: { nome: 'a', email: 'invalido', telefone: '1', mensagem: 'x' } });
     check('lead inválido recusado', leadRuim.status === 400, leadRuim.status);
     const lead = await api('POST', '/api/leads', {

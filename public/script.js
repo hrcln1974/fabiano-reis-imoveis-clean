@@ -595,6 +595,7 @@ async function aplicarContatoGlobal() {
       else if (el.tagName === 'A' && campo === 'telefone') el.href = `tel:+${String(valor).replace(/\D/g, '')}`;
       el.textContent = valor;
     });
+    document.querySelectorAll('[data-contato-horario]').forEach(el => { if (contato.horario) el.textContent = contato.horario; });
   } catch (_) {
     /* mantém os valores padrão do HTML se a API não responder */
   }

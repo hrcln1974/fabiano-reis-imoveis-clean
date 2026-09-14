@@ -161,7 +161,10 @@ try {
     ['Fallback POST para exclusão de foto', serverContent.includes("app.post('/api/imoveis/:imovelId/imagens/:imagemId/excluir'")],
     ['Busca robusta da foto', serverContent.includes('function buscarImagemParaExclusao')],
     ['Storage com exclusão segura', serverContent.includes('removeStoredAsset')],
-    ['Dashboard envia referência da foto', dashboardContent.includes('body:JSON.stringify({arquivo:arquivo||\'\',url_externa:urlExterna||\'\'})')]
+    ['Dashboard envia referência da foto', dashboardContent.includes('body:JSON.stringify({arquivo:arquivo||\'\',url_externa:urlExterna||\'\'})')],
+    ['Importação JSON de imóveis protegida', serverContent.includes("app.post('/api/admin/imoveis/import.json', verificarCorretor")],
+    ['Exportação JSON de imóveis disponível', serverContent.includes("app.get('/api/admin/imoveis/export.json', verificarCorretor")],
+    ['Importação transacional com rollback', serverContent.includes("db.exec('BEGIN')") && serverContent.includes("db.exec('ROLLBACK')")]
   ];
   mediaChecks.forEach(([label, ok]) => {
     if (ok) passes.push(`${label} ✓`);

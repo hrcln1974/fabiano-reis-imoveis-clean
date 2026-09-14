@@ -29,7 +29,7 @@ const env = fs.readFileSync(path.join(root,'.env.example'),'utf8');
 if (/COLOQUE_AQUI|SEU_USUARIO|SEU_EMAIL/.test(env)) ok('env.example não contém credenciais reais'); else fail('env.example deve permanecer genérico');
 
 const imgDir = path.join(root,'public/uploads/imagens');
-const allowed = new Set(['.gitkeep','foto-corretor-v5.png','banner-alto-padrao.png']);
+const allowed = new Set(['.gitkeep','foto-corretor-v5.png','banner-alto-padrao.png','fabiano.png']);
 if (fs.existsSync(imgDir)) {
   const extras = fs.readdirSync(imgDir).filter(x => !allowed.has(x));
   extras.length ? fail(`imagens institucionais extras: ${extras.join(', ')}`) : ok('somente foto do corretor e banner no pacote');
@@ -41,6 +41,9 @@ dashboard.includes('excluirLead') && dashboard.includes('🗑️ Excluir')
   ? ok('botão explícito de exclusão de lead presente')
   : fail('botão de exclusão de lead ausente');
 server.includes("app.delete('/api/leads/:id'") ? ok('API de exclusão definitiva de lead presente') : fail('API de exclusão de lead ausente');
+server.includes("app.get('/api/admin/imoveis/export.json'") ? ok('API de exportação JSON de imóveis presente') : fail('API de exportação JSON de imóveis ausente');
+server.includes("app.post('/api/admin/imoveis/import.json'") ? ok('API de importação JSON de imóveis presente') : fail('API de importação JSON de imóveis ausente');
+server.includes("db.exec('BEGIN')") && server.includes("db.exec('ROLLBACK')") ? ok('Importação usa transação com rollback') : fail('Importação sem proteção transacional');
 
 if (failures) {
   console.error(`AUDITORIA: ${failures} falha(s).`);

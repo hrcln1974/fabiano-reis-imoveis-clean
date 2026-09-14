@@ -84,6 +84,7 @@ function abrirSecao(secaoId, navElement) {
   if (secaoId === 'imoveis') carregarImoveis();
   if (secaoId === 'leads') carregarLeads();
   if (secaoId === 'conversoes') carregarConversoes();
+  if (secaoId === 'configuracoes') carregarConfiguracoes();
   if (secaoId === 'novo-imovel' && !imovelEditandoId) prepararNovoImovel();
 }
 
@@ -557,20 +558,95 @@ async function deletarVideo(imovelId,videoId){
   }catch(e){if(e.message!=='UNAUTHORIZED')alert(e.message);}
 }
 
+async function carregarConfiguracoes() {
+  const msg = document.getElementById('msgConfiguracoes');
+  try {
+    if (msg) { msg.className='form-message info'; msg.textContent='Carregando...'; }
+    const res = await apiFetch(`${API_BASE}/admin/configuracoes`, { cache:'no-store' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Falha ao carregar configurações.');
+    const input = document.getElementById('configHorario');
+    if (input) input.value = data.horario || '';
+    if (msg) { msg.className='form-message'; msg.textContent=''; }
+  } catch (e) {
+    if (e.message !== 'UNAUTHORIZED' && msg) { msg.className='form-message error'; msg.textContent='❌ '+e.message; }
+  }
+}
+
+async function salvarConfiguracaoHorario() {
+  const input = document.getElementById('configHorario');
+  const msg = document.getElementById('msgConfiguracoes');
+  const horario = String(input?.value || '').trim();
+  if (horario.length < 3) { if (msg) { msg.className='form-message error'; msg.textContent='❌ Informe um horário válido.'; } return; }
+  try {
+    if (msg) { msg.className='form-message info'; msg.textContent='⏳ Salvando...'; }
+    const res = await apiFetch(`${API_BASE}/admin/configuracoes`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({horario}) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Falha ao salvar o horário.');
+    if (input) input.value = data.horario || horario;
+    if (msg) { msg.className='form-message success'; msg.textContent='✅ Horário atualizado com sucesso.'; }
+  } catch (e) {
+    if (e.message !== 'UNAUTHORIZED' && msg) { msg.className='form-message error'; msg.textContent='❌ '+e.message; }
+  }
+}
+
 async function logout(){try{await fetch(`${API_BASE}/logout`,{method:'POST',credentials:'same-origin'});}finally{window.location.href='/?login=1';}}
 
 document.getElementById('modalImagens')?.addEventListener('click',e=>{if(e.target.id==='modalImagens')fecharModalImagens();});
 document.getElementById('modalLead')?.addEventListener('click',e=>{if(e.target.id==='modalLead')fecharModalLead();});
 document.getElementById('fotosImovel')?.addEventListener('change',function(){const grid=document.getElementById('previewFotos');if(!grid)return;Array.from(this.files||[]).forEach(file=>{if(!file.type.startsWith('image/'))return;const reader=new FileReader();reader.onload=e=>{const item=document.createElement('div');item.className='photo-preview';item.innerHTML=`<img src="${e.target.result}" alt="Pré-visualização"><span>${escapeHtml(file.name)}</span>`;grid.appendChild(item);};reader.readAsDataURL(file);});});
 
-document.addEventListener('DOMContentLoaded',()=>{atualizarData();validarSessaoInicial().then(ok=>{if(ok)carregarDashboard();});});
+document.addEventListener('DOMContentLoaded',()=>{atualizarData();validarSessaoInicial().then(ok=>{if(ok){carregarDashboard();carregarConfiguracoes();}});});
+
+
+async function importarImoveisJson(file) {
+  const msg = document.getElementById('msgImportacaoImoveis');
+  const modo = document.getElementById('modoImportacaoImoveis')?.value || 'atualizar';
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    if (msg) { msg.className='form-message error'; msg.textContent='❌ Arquivo JSON maior que 5 MB.'; }
+    return;
+  }
+  try {
+    if (msg) { msg.className='form-message info'; msg.textContent='⏳ Validando arquivo...'; }
+    const texto = await file.text();
+    let payload;
+    try { payload = JSON.parse(texto); } catch (_) { throw new Error('JSON inválido ou corrompido.'); }
+    const lista = Array.isArray(payload) ? payload : payload?.imoveis;
+    if (!Array.isArray(lista) || !lista.length) throw new Error('O arquivo não contém uma lista de imóveis.');
+    const confirmacao = modo === 'atualizar'
+      ? `Importar ${lista.length} imóvel(is) no modo ATUALIZAR? IDs existentes serão atualizados; IDs que não existirem serão adicionados.
+
+Os imóveis e mídias atuais não serão apagados.`
+      : `Importar ${lista.length} imóvel(is) como NOVOS?
+
+Os IDs do arquivo não serão reutilizados e os cadastros atuais não serão alterados.`;
+    if (!window.confirm(confirmacao)) { if (msg) msg.textContent='Importação cancelada.'; return; }
+    if (msg) msg.textContent='⏳ Aplicando importação com transação segura...';
+    const res = await apiFetch(`${API_BASE}/admin/imoveis/import.json`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ...payload, imoveis: lista, modo })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Falha na importação.');
+    if (msg) { msg.className='form-message success'; msg.textContent=`✅ Importação concluída: ${data.atualizados||0} atualizado(s) e ${data.adicionados||0} adicionado(s). Mídias vinculadas: ${data.midias_adicionadas||0}. Nenhum cadastro foi apagado.`; }
+    await carregarImoveis();
+    carregarDashboard();
+  } catch (err) {
+    if (err.message !== 'UNAUTHORIZED' && msg) { msg.className='form-message error'; msg.textContent='❌ '+err.message; }
+  } finally {
+    const input=document.getElementById('arquivoImportacaoImoveis'); if(input) input.value='';
+  }
+}
+function selecionarImportacaoImoveis() { document.getElementById('arquivoImportacaoImoveis')?.click(); }
+
+document.getElementById('arquivoImportacaoImoveis')?.addEventListener('change', function(){ importarImoveisJson(this.files?.[0]); });
 
 function criarAcoesExportacao() {
   const target = document.querySelector('#inicio .section-header, #inicio h2, #inicio .page-title');
   if (!target || document.getElementById('v8-export-actions')) return;
   const box = document.createElement('div'); box.id='v8-export-actions';
   box.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';
-  box.innerHTML='<a class="btn-secondary" href="/api/admin/leads/export.csv">Exportar leads CSV</a><a class="btn-secondary" href="/api/admin/imoveis/export.json">Exportar imóveis JSON</a>';
+  box.innerHTML='<a class="btn-secondary" href="/api/admin/leads/export.csv">Exportar leads CSV</a>';
   target.parentElement?.insertBefore(box,target.nextSibling);
 }
 document.addEventListener('DOMContentLoaded', criarAcoesExportacao);

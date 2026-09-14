@@ -1,1 +1,2 @@
 1.0.0
+Backup/importação JSON de imóveis: adicionado nesta release.

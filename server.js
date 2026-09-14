@@ -321,6 +321,7 @@ function initDb() {
     db.run(`CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, email TEXT NOT NULL, telefone TEXT NOT NULL, whatsapp TEXT, mensagem TEXT, imovel_id INTEGER, tipo_interesse TEXT, status TEXT DEFAULT 'novo', criado_em DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(imovel_id) REFERENCES imoveis(id))`);
     // produção — estrutura para depoimentos reais (nenhum dado fictício é inserido).
     db.run(`CREATE TABLE IF NOT EXISTS depoimentos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, cidade TEXT, texto TEXT NOT NULL, nota INTEGER, aprovado INTEGER DEFAULT 0, criado_em DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    db.run(`CREATE TABLE IF NOT EXISTS configuracoes_site (chave TEXT PRIMARY KEY, valor TEXT NOT NULL, atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     db.run(`CREATE TABLE IF NOT EXISTS conversoes (id INTEGER PRIMARY KEY AUTOINCREMENT, imovel_id INTEGER NOT NULL, tipo TEXT NOT NULL, criado_em DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(imovel_id) REFERENCES imoveis(id) ON DELETE CASCADE)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_conversoes_imovel_tipo_data ON conversoes (imovel_id, tipo, criado_em)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_conversoes_data ON conversoes (criado_em)`);
@@ -1961,8 +1962,33 @@ const CONTATO = Object.freeze({
 });
 
 app.get('/api/corretor', (req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=300');
-  res.json(CONTATO);
+  db.get('SELECT valor FROM configuracoes_site WHERE chave = ?', ['contato_horario'], (err, row) => {
+    const contato = { ...CONTATO };
+    if (!err && row?.valor) contato.horario = String(row.valor);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(contato);
+  });
+});
+
+app.get('/api/admin/configuracoes', verificarCorretor, (req, res) => {
+  db.get('SELECT valor FROM configuracoes_site WHERE chave = ?', ['contato_horario'], (err, row) => {
+    if (err) return res.status(500).json({ erro: 'Erro ao carregar configurações.' });
+    res.json({ horario: String(row?.valor || CONTATO.horario) });
+  });
+});
+
+app.put('/api/admin/configuracoes', verificarCorretor, (req, res) => {
+  const horario = String(req.body?.horario || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+  if (horario.length < 3) return res.status(400).json({ erro: 'Informe um horário de atendimento válido.' });
+  db.run(
+    `INSERT INTO configuracoes_site (chave, valor, atualizado_em) VALUES (?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = CURRENT_TIMESTAMP`,
+    ['contato_horario', horario],
+    function(err) {
+      if (err) return res.status(500).json({ erro: 'Erro ao salvar o horário de atendimento.' });
+      res.json({ ok: true, horario });
+    }
+  );
 });
 
 
@@ -2103,11 +2129,159 @@ app.get('/api/admin/imoveis/export.json', verificarCorretor, (req, res) => {
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ erro: 'Erro ao exportar imóveis' });
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="imoveis-fabiano-reis.json"');
-      res.json({ exportado_em: new Date().toISOString(), imoveis: rows || [] });
+      db.all(
+        `SELECT id, imovel_id, tipo, arquivo, url_externa, ordem, principal, criado_em
+         FROM imovel_midias ORDER BY imovel_id ASC, principal DESC, ordem ASC, id ASC`,
+        [],
+        (midiaErr, midias) => {
+          if (midiaErr) return res.status(500).json({ erro: 'Erro ao exportar mídias dos imóveis' });
+          const mapa = new Map();
+          for (const media of midias || []) {
+            const id = Number(media.imovel_id);
+            if (!mapa.has(id)) mapa.set(id, []);
+            mapa.get(id).push(media);
+          }
+          const imoveis = (rows || []).map(row => ({
+            ...row,
+            caracteristicas: normalizarCaracteristicas(row.caracteristicas_json),
+            midias: mapa.get(Number(row.id)) || []
+          }));
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Content-Disposition', 'attachment; filename="imoveis-fabiano-reis.json"');
+          res.json({
+            formato: 'fabiano-reis-imoveis-backup',
+            versao: 2,
+            exportado_em: new Date().toISOString(),
+            observacao: 'Backup dos dados dos imóveis e referências de mídia. Os arquivos físicos das mídias permanecem no storage persistente.',
+            total_imoveis: imoveis.length,
+            total_midias: (midias || []).length,
+            imoveis
+          });
+        }
+      );
     }
   );
+});
+
+app.post('/api/admin/imoveis/import.json', verificarCorretor, (req, res) => {
+  const payload = req.body || {};
+  const lista = Array.isArray(payload) ? payload : payload.imoveis;
+  const modo = String(payload.modo || req.query.modo || 'atualizar').toLowerCase();
+  if (!Array.isArray(lista)) return res.status(400).json({ erro: 'Arquivo inválido: esperado um array de imóveis ou um objeto com a propriedade imoveis.' });
+  if (!['atualizar', 'adicionar'].includes(modo)) return res.status(400).json({ erro: 'Modo inválido. Use atualizar ou adicionar.' });
+  if (!lista.length) return res.status(400).json({ erro: 'O arquivo não contém imóveis para importar.' });
+  if (lista.length > 1000) return res.status(400).json({ erro: 'Limite de 1000 imóveis por importação.' });
+
+  const normalizados = [];
+  const erros = [];
+  for (let index = 0; index < lista.length; index++) {
+    const item = lista[index] || {};
+    const validado = validarImovel(item);
+    if (validado.erro) {
+      erros.push({ indice: index + 1, id: item.id ?? null, erro: validado.erro });
+      continue;
+    }
+    normalizados.push({
+      origem: item,
+      id: Number.isInteger(Number(item.id)) && Number(item.id) > 0 ? Number(item.id) : null,
+      dados: validado.dados,
+      ativo: item.ativo === undefined ? 1 : Number(Boolean(item.ativo))
+    });
+  }
+  if (erros.length) return res.status(400).json({ erro: 'A importação foi interrompida: há imóveis inválidos.', erros, importados: 0 });
+
+  const run = (sql, params) => new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) return reject(err);
+      resolve({ lastID: this.lastID, changes: this.changes });
+    });
+  });
+  const get = (sql, params) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => err ? reject(err) : resolve(row));
+  });
+  const all = (sql, params) => new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows || []));
+  });
+  const arquivoFisicoExiste = (arquivo) => {
+    const valor = String(arquivo || '').trim();
+    if (!valor || /^https?:\/\//i.test(valor) || !valor.startsWith('/uploads/')) return false;
+    const relativo = valor.replace(/^\/uploads\//, '');
+    const raiz = path.resolve(midiaStorage.mediaRoot) + path.sep;
+    const destino = path.resolve(midiaStorage.mediaRoot, relativo);
+    if (!destino.startsWith(raiz)) return false;
+    try { return fs.statSync(destino).isFile(); } catch (_) { return false; }
+  };
+  const importarMidias = async (origemMidias, novoId) => {
+    const listaMidias = Array.isArray(origemMidias) ? origemMidias : [];
+    let adicionadas = 0;
+    let ignoradas = 0;
+    for (const media of listaMidias) {
+      const tipo = String(media?.tipo || '').trim().toLowerCase();
+      const arquivo = String(media?.arquivo || '').trim();
+      const urlExterna = String(media?.url_externa || '').trim();
+      if (!['imagem','video'].includes(tipo) || (!arquivo && !urlExterna)) { ignoradas++; continue; }
+      if (arquivo && !/^https?:\/\//i.test(arquivo) && !arquivoFisicoExiste(arquivo)) { ignoradas++; continue; }
+      if (tipo === 'imagem' && arquivo && !/^https?:\/\//i.test(arquivo) && !arquivoFisicoExiste(arquivo)) { ignoradas++; continue; }
+      const existente = await get(
+        `SELECT id FROM imovel_midias WHERE imovel_id = ? AND tipo = ? AND arquivo = ? AND COALESCE(url_externa,'') = ? LIMIT 1`,
+        [novoId, tipo, arquivo, urlExterna]
+      );
+      if (existente) { ignoradas++; continue; }
+      await run(
+        `INSERT INTO imovel_midias (imovel_id, tipo, arquivo, url_externa, ordem, principal) VALUES (?, ?, ?, ?, ?, ?)`,
+        [novoId, tipo, arquivo, urlExterna, Number(media.ordem) || 0, Number(Boolean(Number(media.principal) || media.principal === true))]
+      );
+      adicionadas++;
+    }
+    // Mantém uma única imagem principal por imóvel quando a importação trouxe uma.
+    const principais = await all(`SELECT id FROM imovel_midias WHERE imovel_id = ? AND tipo = 'imagem' AND principal = 1 ORDER BY ordem ASC, id ASC`, [novoId]);
+    if (principais.length > 1) {
+      const manter = Number(principais[0].id);
+      await run(`UPDATE imovel_midias SET principal = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE imovel_id = ? AND tipo = 'imagem'`, [manter, novoId]);
+    }
+    return { adicionadas, ignoradas };
+  };
+
+  (async () => {
+    let adicionados = 0;
+    let atualizados = 0;
+    let midiasAdicionadas = 0;
+    let midiasIgnoradas = 0;
+    const detalhes = [];
+    try {
+      db.exec('BEGIN');
+      for (const item of normalizados) {
+        const d = item.dados;
+        const valores = [d.titulo, d.descricao, d.preco, d.tipo, d.operacao, d.endereco, d.numero, d.bairro, d.cidade, d.cep, d.quartos, d.banheiros, d.area, d.garagem, d.piscina, d.destaque, JSON.stringify(d.caracteristicas)];
+        let destinoId = null;
+        let acao = 'adicionado';
+        if (modo === 'atualizar' && item.id) {
+          const existente = await get('SELECT id FROM imoveis WHERE id = ?', [item.id]);
+          if (existente) {
+            await run(`UPDATE imoveis SET titulo=?, descricao=?, preco=?, tipo=?, operacao=?, endereco=?, numero=?, bairro=?, cidade=?, cep=?, quartos=?, banheiros=?, area=?, garagem=?, piscina=?, destaque=?, caracteristicas_json=?, ativo=? WHERE id=?`, [...valores, item.ativo, item.id]);
+            atualizados++;
+            destinoId = item.id;
+            acao = 'atualizado';
+          }
+        }
+        if (!destinoId) {
+          const criado = await run(`INSERT INTO imoveis (titulo, descricao, preco, tipo, operacao, endereco, numero, bairro, cidade, cep, quartos, banheiros, area, garagem, piscina, destaque, caracteristicas_json, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [...valores, item.ativo]);
+          adicionados++;
+          destinoId = criado.lastID;
+        }
+        const mediaResult = await importarMidias(item.origem.midias, destinoId);
+        midiasAdicionadas += mediaResult.adicionadas;
+        midiasIgnoradas += mediaResult.ignoradas;
+        detalhes.push({ id: destinoId, origem_id: item.id, acao, midias_adicionadas: mediaResult.adicionadas, midias_ignoradas: mediaResult.ignoradas });
+      }
+      db.exec('COMMIT');
+      res.json({ ok: true, modo, total: normalizados.length, adicionados, atualizados, midias_adicionadas: midiasAdicionadas, midias_ignoradas: midiasIgnoradas, detalhes });
+    } catch (err) {
+      try { db.exec('ROLLBACK'); } catch (_) {}
+      console.error('Erro na importação de imóveis:', err);
+      res.status(500).json({ erro: 'A importação foi revertida por segurança. Nenhum imóvel ou vínculo de mídia desta operação foi aplicado.' });
+    }
+  })();
 });
 
 // ============= DEPOIMENTOS (somente dados reais cadastrados) =============
