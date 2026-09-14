@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const sharp = require('sharp');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const db = require('./db-adapter');
@@ -473,6 +474,78 @@ app.get('/robots.txt', (req, res) => {
   res.send(`User-agent: *\nAllow: /\nDisallow: /dashboard.html\nDisallow: /api/\n\nSitemap: ${base}/sitemap.xml\n`);
 });
 
+// ============================================================
+// IMAGEM OG PÚBLICA PARA WHATSAPP / FACEBOOK
+// ============================================================
+//
+// Exemplo:
+// https://www.fabianoreisimoveis.com.br/share/imovel/123.jpg
+//
+// A rota não depende de JavaScript e retorna uma imagem JPEG
+// real, pronta para crawlers de redes sociais.
+// ============================================================
+
+app.get('/share/imovel/:id.jpg', async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(404).end();
+  }
+
+  try {
+    const imovel = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT id, titulo, preco, bairro, cidade FROM imoveis WHERE id = ? AND ativo = 1',
+        [id],
+        (err, row) => {
+          if (err) return reject(err);
+          resolve(row || null);
+        }
+      );
+    });
+
+    if (!imovel) {
+      return res.status(404).end();
+    }
+
+    const imagem = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT id, arquivo, url_externa, principal, ordem
+         FROM imovel_midias
+         WHERE imovel_id = ?
+           AND tipo = 'imagem'
+         ORDER BY principal DESC, ordem ASC, id ASC
+         LIMIT 1`,
+        [id],
+        (err, row) => {
+          if (err) return reject(err);
+          resolve(row || null);
+        }
+      );
+    });
+
+    const buffer = await gerarImagemCompartilhamento(imovel, imagem);
+
+    res.status(200);
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Length', String(buffer.length));
+    res.setHeader(
+      'Cache-Control',
+      'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800'
+    );
+    res.setHeader('Content-Disposition', 'inline; filename="imovel-og.jpg"');
+
+    return res.end(buffer);
+  } catch (err) {
+    console.error('[OG IMAGE] Falha ao gerar imagem:', {
+      message: err?.message || null,
+      imovelId: id
+    });
+
+    return res.status(500).end();
+  }
+});
+
 // Páginas estáticas recebem SITE_URL no momento do envio para manter
 // canonical, Open Graph e JSON-LD consistentes com o domínio oficial.
 
@@ -638,8 +711,288 @@ function passwordStrong(password) {
 }
 
 function publicBaseUrl(req) {
-  return String(process.env.SITE_URL || `${req.protocol}://${req.get('host')}`)
+  const configurada = String(process.env.SITE_URL || '').trim();
+
+  // Em produção, o domínio oficial nunca deve depender do Host
+  // enviado pelo navegador/proxy.
+  if (IS_PRODUCTION) {
+    return (configurada || 'https://www.fabianoreisimoveis.com.br')
+      .replace(/\/+$/, '');
+  }
+
+  return (configurada || `${req.protocol}://${req.get('host')}`)
     .replace(/\/+$/, '');
+}
+
+// ============================================================
+// OPEN GRAPH — IMAGEM REAL DE COMPARTILHAMENTO
+// ============================================================
+//
+// Gera uma imagem JPEG 1200x630 específica para cada imóvel.
+//
+// Motivo:
+// WhatsApp/Facebook podem buscar somente o HTML inicial da página
+// e não executam o JavaScript do navegador para descobrir a foto.
+//
+// Portanto:
+// /share/imovel/123.jpg
+// é uma imagem real, pública e acessível diretamente pelo crawler.
+//
+// ============================================================
+
+const OG_IMAGE_WIDTH = 1200;
+const OG_IMAGE_HEIGHT = 630;
+
+function caminhoSeguroDaMidia(arquivo) {
+  const valor = String(arquivo || '').trim();
+
+  if (!valor || /^https?:\/\//i.test(valor)) {
+    return null;
+  }
+
+  if (!valor.startsWith('/uploads/')) {
+    return null;
+  }
+
+  const relativo = valor.replace(/^\/uploads\//, '');
+  const raiz = path.resolve(midiaStorage.mediaRoot) + path.sep;
+  const destino = path.resolve(midiaStorage.mediaRoot, relativo);
+
+  if (!destino.startsWith(raiz)) {
+    return null;
+  }
+
+  return destino;
+}
+
+async function obterBufferImagemOg(imagem) {
+  const arquivo = String(imagem?.arquivo || '').trim();
+  const urlExterna = String(imagem?.url_externa || '').trim();
+
+  // Primeiro tenta a mídia persistente local.
+  const caminho = caminhoSeguroDaMidia(arquivo);
+
+  if (caminho) {
+    try {
+      return await fs.promises.readFile(caminho);
+    } catch (err) {
+      console.warn('[OG IMAGE] Não foi possível ler a mídia local:', err.message);
+    }
+  }
+
+  // Fallback para uma URL externa válida.
+  if (/^https?:\/\//i.test(urlExterna)) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const response = await fetch(urlExterna, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; FabianoReisImoveis/1.0)'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const contentType = String(
+        response.headers.get('content-type') || ''
+      )
+        .split(';')[0]
+        .toLowerCase();
+
+      const tiposPermitidos = new Set([
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'image/gif'
+      ]);
+
+      if (!tiposPermitidos.has(contentType)) {
+        throw new Error(`Conteúdo não é imagem: ${contentType || 'desconhecido'}`);
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      if (!buffer.length) {
+        throw new Error('Imagem vazia.');
+      }
+
+      if (buffer.length > 8 * 1024 * 1024) {
+        throw new Error('Imagem externa acima de 8 MB.');
+      }
+
+      return buffer;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return null;
+}
+
+async function gerarImagemCompartilhamento(imovel, imagem) {
+  const fonte = await obterBufferImagemOg(imagem);
+
+  // Caso o imóvel não tenha uma foto válida, utiliza uma imagem
+  // institucional existente como fallback.
+  let entrada = fonte;
+
+  if (!entrada) {
+    const fallbackPath = path.join(
+      __dirname,
+      'public',
+      'uploads',
+      'imagens',
+      'foto-corretor-v5.png'
+    );
+
+    try {
+      entrada = await fs.promises.readFile(fallbackPath);
+    } catch (_) {
+      const fallbackAlternativo = path.join(
+        __dirname,
+        'public',
+        'uploads',
+        'imagens',
+        'fabiano.png'
+      );
+
+      entrada = await fs.promises.readFile(fallbackAlternativo);
+    }
+  }
+
+  const titulo = String(imovel?.titulo || 'Imóvel').trim();
+  const bairro = String(imovel?.bairro || '').trim();
+  const cidade = String(imovel?.cidade || '').trim();
+
+  const localizacao = [bairro, cidade]
+    .filter(Boolean)
+    .join(' • ');
+
+  const preco = Number(imovel?.preco || 0);
+
+  const precoFormatado = preco > 0
+    ? preco.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      })
+    : '';
+
+  const textoInferior = [localizacao, precoFormatado]
+    .filter(Boolean)
+    .join('  |  ');
+
+  const escapeXml = valor => String(valor || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  const tituloSeguro = escapeXml(titulo.slice(0, 90));
+  const localSeguro = escapeXml(textoInferior.slice(0, 110));
+
+  const svgOverlay = `
+    <svg width="${OG_IMAGE_WIDTH}" height="${OG_IMAGE_HEIGHT}" viewBox="0 0 ${OG_IMAGE_WIDTH} ${OG_IMAGE_HEIGHT}">
+      <defs>
+        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000000" stop-opacity="0.05"/>
+          <stop offset="55%" stop-color="#000000" stop-opacity="0.10"/>
+          <stop offset="100%" stop-color="#000000" stop-opacity="0.78"/>
+        </linearGradient>
+      </defs>
+
+      <rect width="1200" height="630" fill="url(#grad)"/>
+
+      <rect
+        x="44"
+        y="44"
+        width="390"
+        height="62"
+        rx="12"
+        fill="#0f2f3d"
+        fill-opacity="0.94"
+      />
+
+      <text
+        x="70"
+        y="85"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="27"
+        font-weight="700"
+        fill="#ffffff"
+      >
+        Fabiano Reis Imóveis
+      </text>
+
+      <rect
+        x="44"
+        y="438"
+        width="1112"
+        height="148"
+        rx="18"
+        fill="#0b1820"
+        fill-opacity="0.82"
+      />
+
+      <text
+        x="76"
+        y="493"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="35"
+        font-weight="700"
+        fill="#ffffff"
+      >
+        ${tituloSeguro}
+      </text>
+
+      <text
+        x="76"
+        y="544"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="25"
+        font-weight="500"
+        fill="#f4f4f4"
+      >
+        ${localSeguro}
+      </text>
+
+      <text
+        x="76"
+        y="579"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="20"
+        font-weight="600"
+        fill="#ffffff"
+      >
+        CRECI-RJ 93.426
+      </text>
+    </svg>
+  `;
+
+  return sharp(entrada)
+    .resize(OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT, {
+      fit: 'cover',
+      position: 'attention'
+    })
+    .composite([
+      {
+        input: Buffer.from(svgOverlay),
+        top: 0,
+        left: 0
+      }
+    ])
+    .jpeg({
+      quality: 88,
+      progressive: true,
+      mozjpeg: true
+    })
+    .toBuffer();
 }
 
 async function sendTransactionalEmail({ to, subject, html, text }) {
@@ -2370,10 +2723,13 @@ app.get(['/imovel/:slugId', '/imovel/:slugId/'], (req, res, next) => {
         const titulo = `${imovel.titulo} — ${preco} | ${imovel.bairro}, ${imovel.cidade}`;
         const descricaoBase = String(imovel.descricao || '').replace(/\s+/g, ' ').trim();
         const descricao = (descricaoBase || `${imovel.tipo} para ${imovel.operacao} em ${imovel.bairro}, ${imovel.cidade}.`).slice(0, 155);
-        const imagem = capa ? String(capa.arquivo || capa.url_externa || '') : '';
-        const imagemAbsoluta = imagem
-          ? (/^https?:\/\//i.test(imagem) ? imagem : `${baseUrlDaRequisicao(req)}${imagem}`)
-          : '';
+
+const basePublica = publicBaseUrl(req);
+
+// A imagem OG agora é uma imagem real gerada pelo servidor.
+// Isso evita depender do crawler conseguir interpretar a mídia
+// original ou executar JavaScript.
+const imagemAbsoluta = `${basePublica}/share/imovel/${id}.jpg`;
 
         const jsonLd = {
           '@context': 'https://schema.org',

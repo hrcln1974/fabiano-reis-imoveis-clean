@@ -11,6 +11,7 @@
     "dev": "nodemon server.js",
     "check": "node preflight.js",
     "test:smoke": "node scripts/smoke-test.js",
+    "test:share": "node scripts/test-share-preview.js",
     "build:release": "node scripts/build-release.js",
     "admin:create": "node scripts/create-admin.js",
     "start:prod": "NODE_ENV=production node server.js",

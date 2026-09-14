@@ -1,7 +1,10 @@
 #!/usr/bin/env node
+
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const assert = require('node:assert/strict');
+
 
 const projectRoot = path.resolve(__dirname, '..');
 const releaseRoot = path.join(projectRoot, 'release');
@@ -171,4 +174,59 @@ if (failures) {
   process.exit(1);
 }
 
+
+const serverSource = fs.readFileSync(
+  path.join(releaseRoot, 'server.js'),
+  'utf8'
+);
+
+const htmlSource = fs.readFileSync(
+  path.join(releaseRoot, 'public', 'imovel.html'),
+  'utf8'
+);
+
+assert(
+  serverSource.includes("app.get('/share/imovel/:id.jpg'"),
+  'rota pública de imagem OG presente'
+);
+
+assert(
+  serverSource.includes('gerarImagemCompartilhamento'),
+  'gerador de imagem OG presente'
+);
+
+assert(
+  serverSource.includes('OG_IMAGE_WIDTH = 1200'),
+  'largura OG 1200 configurada'
+);
+
+assert(
+  serverSource.includes('OG_IMAGE_HEIGHT = 630'),
+  'altura OG 630 configurada'
+);
+
+assert(
+  htmlSource.includes('og:image:secure_url'),
+  'og:image:secure_url presente'
+);
+
+assert(
+  htmlSource.includes('og:image:type'),
+  'og:image:type presente'
+);
+
+assert(
+  htmlSource.includes('og:image:width'),
+  'og:image:width presente'
+);
+
+assert(
+  htmlSource.includes('og:image:height'),
+  'og:image:height presente'
+);
+
+assert(
+  htmlSource.includes('twitter:card'),
+  'Twitter Card summary_large_image presente'
+);
 console.log('AUDITORIA: 10/10');
