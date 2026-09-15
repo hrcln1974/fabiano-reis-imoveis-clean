@@ -561,6 +561,28 @@ if (midiaStorage.isLocal && !MEDIA_DENTRO_DE_PUBLIC) {
   }));
 }
 
+// Compatibilidade com URLs antigas: /imovel.html?id=14
+// Redireciona para a URL canônica amigável e preserva o SEO.
+app.get('/imovel.html', (req, res, next) => {
+  const id = Number(req.query.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return next();
+  }
+
+  db.get(
+    'SELECT id, titulo, bairro, cidade FROM imoveis WHERE id = ? AND ativo = 1',
+    [id],
+    (err, imovel) => {
+      if (err) return next(err);
+      if (!imovel) return responder404(req, res);
+
+      const slug = slugImovel(imovel);
+      return res.redirect(301, `/imovel/${slug}-${id}`);
+    }
+  );
+});
+
 app.use(express.static(path.join(__dirname, 'public'), {
   dotfiles: 'deny',
   setHeaders: (res, filePath) => {
