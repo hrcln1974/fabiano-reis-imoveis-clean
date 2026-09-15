@@ -2782,7 +2782,7 @@ const imagemAbsoluta = `${basePublica}/share/imovel/${id}.jpg`;
         };
 
         try {
-          let html = fs.readFileSync(path.join(__dirname, 'public', 'imovel.html'), 'utf8');
+          let html = fs.readFileSync(path.join(__dirname, 'public', 'imovel-template.html'), 'utf8');
           html = html
             .replace(/%%TITULO%%/g, escapeHtmlServidor(titulo))
             .replace(/%%DESCRICAO%%/g, escapeHtmlServidor(descricao))

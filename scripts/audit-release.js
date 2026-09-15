@@ -56,7 +56,7 @@ const required = [
   '.env.example',
   'public/index.html',
   'public/dashboard.html',
-  'public/imovel.html',
+  'public/imovel-template.html',
   'public/robots.txt',
   'public/sitemap.xml',
   'DEPLOY-HOSTINGER.md'
@@ -181,7 +181,7 @@ const serverSource = fs.readFileSync(
 );
 
 const htmlSource = fs.readFileSync(
-  path.join(releaseRoot, 'public', 'imovel.html'),
+  path.join(releaseRoot, 'public', 'imovel-template.html'),
   'utf8'
 );
 
