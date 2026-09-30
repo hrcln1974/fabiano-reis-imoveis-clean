@@ -16,10 +16,17 @@
   <meta property="og:url" content="https://fabianoreisimoveis.com.br/">
   <meta property="og:title" content="Fabiano Reis Imóveis | Compra, Venda e Aluguel">
   <meta property="og:description" content="Corretor imobiliário CRECI-RJ 93.426. Atendimento personalizado para compra, venda e aluguel de imóveis.">
+  <meta property="og:image" content="https://fabianoreisimoveis.com.br/img/og-default.jpg">
+  <meta property="og:image:secure_url" content="https://fabianoreisimoveis.com.br/img/og-default.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Fabiano Reis Imóveis | Compra, Venda e Aluguel">
   <meta name="twitter:description" content="Corretor imobiliário CRECI-RJ 93.426. Atendimento personalizado para compra, venda e aluguel de imóveis.">
+  <meta name="twitter:image" content="https://fabianoreisimoveis.com.br/img/og-default.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'">
@@ -41,7 +48,6 @@
         <li><a href="#imoveis">Imóveis</a></li>
         <li><a href="#sobre">Sobre</a></li>
         <li><a href="#contato">Contato</a></li>
-        <li id="nav-admin"><a href="#" onclick="mostrarLogin(); return false;">🔒 Área do Corretor</a></li>
       </ul>
     </div>
   </nav>
@@ -427,7 +433,9 @@
         <a href="/privacidade">Política de Privacidade</a>
         <a href="/termos">Termos de Uso</a>
         <a href="/sitemap.xml">Sitemap</a>
-        <a href="#" onclick="mostrarLogin(); return false;">Área do Corretor</a>
+        <a class="fr-admin-lock" href="#" onclick="mostrarLogin(); return false;" aria-label="Acesso administrativo" title="Acesso administrativo">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 10V8a5 5 0 0 1 10 0v2m-9 0h8a2 2 0 0 1 2 2v7H6v-7a2 2 0 0 1 2-2Zm4 4v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
       </nav>
     </div>
   </footer>

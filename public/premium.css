@@ -173,3 +173,29 @@ img { max-width: 100%; height: auto; }
   .fr-card:hover { transform: none; }
   .fr-card:hover .fr-card__foto img { transform: none; }
 }
+
+/* ---------- Acesso administrativo discreto no rodapé ---------- */
+.fr-admin-lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 2px;
+  border-radius: 50%;
+  color: currentColor;
+  opacity: .62;
+  text-decoration: none;
+  transition: opacity .18s var(--fr-ease), background-color .18s var(--fr-ease), transform .18s var(--fr-ease);
+}
+.fr-admin-lock svg { width: 16px; height: 16px; display: block; }
+.fr-admin-lock:hover,
+.fr-admin-lock:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+.fr-admin-lock:active { transform: scale(.96); }
+@media (max-width: 640px) {
+  .fr-admin-lock { width: 28px; height: 28px; }
+  .fr-admin-lock svg { width: 15px; height: 15px; }
+}

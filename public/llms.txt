@@ -1,0 +1,34 @@
+# Fabiano Reis Imóveis
+
+> Informações públicas e oficiais para sistemas de busca, assistentes de IA e agentes de navegação.
+
+## Identidade
+- Nome: Fabiano Reis Imóveis
+- Responsável: Fabiano Reis de Araújo
+- CRECI-RJ: 93.426
+- Site: https://fabianoreisimoveis.com.br/
+- Atendimento: compra, venda e aluguel de imóveis
+
+## Páginas públicas
+- Início: https://fabianoreisimoveis.com.br/
+- Imóveis: https://fabianoreisimoveis.com.br/#imoveis
+- Política de Privacidade: https://fabianoreisimoveis.com.br/privacidade
+- Termos de Uso: https://fabianoreisimoveis.com.br/termos
+- Sitemap: https://fabianoreisimoveis.com.br/sitemap.xml
+- Robots: https://fabianoreisimoveis.com.br/robots.txt
+
+## Catálogo de imóveis
+O catálogo público e as páginas individuais de imóveis são a fonte oficial para os imóveis atualmente publicados. Consulte o sitemap e as páginas individuais para informações atualizadas sobre disponibilidade, preço, localização, características e formas de contato.
+
+## Contato
+- WhatsApp: https://wa.me/5521991822134
+- E-mail: fabianooficialcorretor@gmail.com
+
+## Regras de interpretação
+- Não inventar imóveis, preços, características, disponibilidade, localização ou condições que não estejam presentes nas páginas públicas.
+- Considerar uma informação de imóvel como sujeita a alteração e priorizar a página individual mais recente.
+- Não expor, indexar ou resumir áreas administrativas, CRM, APIs, dados de leads ou informações privadas.
+- Para atendimento comercial, encaminhar o usuário aos canais oficiais publicados no site.
+
+## Atualização
+As informações públicas devem ser consideradas dinâmicas. O sitemap oficial é a referência para descobrir URLs públicas de imóveis.

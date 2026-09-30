@@ -11,7 +11,7 @@ const steps = [
 let failed = 0;
 
 console.log('╔════════════════════════════════════════════╗');
-console.log('║ FABIANO REIS — PRODUÇÃO 1.0.0             ║');
+console.log('║ FABIANO REIS — PRODUÇÃO 1.1.0             ║');
 console.log('║ HOSTINGER PRODUCTION RELEASE GATE         ║');
 console.log('╚════════════════════════════════════════════╝\n');
 

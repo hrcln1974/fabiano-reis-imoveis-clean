@@ -7,4 +7,4 @@ Execute:
 npm run admin:create
 ```
 
-Use uma senha forte e não reutilizada. O comando cria ou atualiza o administrador no banco novo configurado em `SQLITE_FILE`.
+Use uma senha forte e não reutilizada. O comando cria ou atualiza o administrador no banco persistente configurado em `SQLITE_FILE`. Em uma atualização de site existente, não execute o comando sem necessidade.

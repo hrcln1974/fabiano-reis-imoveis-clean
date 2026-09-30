@@ -7,7 +7,7 @@ const out = path.join(root, 'release');
 // Arquivos que nunca devem seguir para um pacote de produção.
 const skipNames = new Set([
   'node_modules', '.git', '.env', 'release', 'backups', 'coverage',
-  'database.db', 'database.db-wal', 'database.db-shm', '-type', '-print'
+  'database.db', 'database.db-wal', 'database.db-shm', 'imoveis-fabiano-reis.json', '-type', '-print'
 ]);
 const skipFile = name => (
   skipNames.has(name) ||

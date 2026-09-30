@@ -1,2 +1,2 @@
-1.0.0
-Backup/importação JSON de imóveis: adicionado nesta release.
+1.1.0
+V13 Premium: acesso administrativo discreto no rodapé, Open Graph institucional, llms.txt, metadados internos e preservação de dados/mídias para deploy seguro na Hostinger.

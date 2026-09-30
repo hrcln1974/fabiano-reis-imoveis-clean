@@ -59,6 +59,8 @@ const required = [
   'public/imovel-template.html',
   'public/robots.txt',
   'public/sitemap.xml',
+  'public/llms.txt',
+  'public/img/og-default.jpg',
   'DEPLOY-HOSTINGER.md'
 ];
 
@@ -77,7 +79,8 @@ const forbidden = [
   'node_modules',
   '.git',
   'backups',
-  'coverage'
+  'coverage',
+  'imoveis-fabiano-reis.json'
 ];
 
 for (const name of forbidden) {
@@ -90,10 +93,10 @@ const pkg = JSON.parse(
   fs.readFileSync(path.join(root, 'package.json'), 'utf8')
 );
 
-if (pkg.version === '1.0.0') {
-  ok('versão de produção: 1.0.0');
+if (pkg.version === '1.1.0') {
+  ok('versão de produção: 1.1.0');
 } else {
-  fail('versão do pacote não é 1.0.0');
+  fail('versão do pacote não é 1.1.0');
 }
 
 if (pkg.scripts?.start === 'node server.js') {
@@ -174,6 +177,29 @@ if (failures) {
   process.exit(1);
 }
 
+
+const indexSource = fs.readFileSync(
+  path.join(releaseRoot, 'public', 'index.html'),
+  'utf8'
+);
+
+if (!indexSource.includes('fr-admin-lock') || indexSource.includes('id="nav-admin"')) {
+  fail('acesso administrativo não está restrito ao cadeado discreto do rodapé');
+} else {
+  ok('acesso administrativo discreto no rodapé');
+}
+
+if (!indexSource.includes('og-default.jpg') || !indexSource.includes('twitter:image')) {
+  fail('Open Graph institucional incompleto');
+} else {
+  ok('Open Graph institucional presente');
+}
+
+if (!fs.existsSync(path.join(releaseRoot, 'public', 'llms.txt'))) {
+  fail('llms.txt ausente');
+} else {
+  ok('llms.txt presente');
+}
 
 const serverSource = fs.readFileSync(
   path.join(releaseRoot, 'server.js'),

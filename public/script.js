@@ -70,10 +70,6 @@ function fecharLogin() {
 
 async function verificarLogin() {
   usuarioTipo = null;
-  const nav = document.getElementById('nav-admin');
-  if (nav) {
-    nav.innerHTML = '<a href="#" onclick="mostrarLogin(); return false;" title="Acesso do Corretor">🔒 Acesso do Corretor</a>';
-  }
 }
 
 document.getElementById('formLogin')?.addEventListener('submit', async (e) => {
