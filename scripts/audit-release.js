@@ -93,10 +93,10 @@ const pkg = JSON.parse(
   fs.readFileSync(path.join(root, 'package.json'), 'utf8')
 );
 
-if (pkg.version === '1.1.0') {
-  ok('versão de produção: 1.1.0');
+if (pkg.version === '1.1.1') {
+  ok('versão de produção: 1.1.1');
 } else {
-  fail('versão do pacote não é 1.1.0');
+  fail('versão do pacote não é 1.1.1');
 }
 
 if (pkg.scripts?.start === 'node server.js') {

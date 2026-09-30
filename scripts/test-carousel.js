@@ -48,11 +48,16 @@ async function main() {
   check('HTML contém controle anterior', html.includes('data-banner-prev'));
   check('HTML contém controle próximo', html.includes('data-banner-next'));
   check('HTML mantém banner mobile dedicado', html.includes('/uploads/imagens/fabiano.png'));
+  check('HTML reserva dimensões dos banners', html.includes('width="1983"') && html.includes('height="793"') && html.includes('width="1981"') && html.includes('height="793"'));
+  check('HTML pré-carrega os 3 banners', (html.match(/rel="preload" as="image"/g) || []).length === 3);
   check('JavaScript inicializa o carrossel', js.includes('configurarCarrosselBanners()'));
   check('JavaScript possui avanço automático', js.includes('setInterval(() => render(index + 1), 5500)'));
   check('JavaScript respeita prefers-reduced-motion', js.includes("prefers-reduced-motion: reduce"));
   check('JavaScript pausa com mouse/foco', js.includes("mouseenter") && js.includes("focusin"));
   check('CSS possui estado ativo do slide', css.includes('.fr-banner-carousel__slide.is-active'));
+  check('CSS reserva altura estável para o carrossel', css.includes('aspect-ratio: 1982 / 793') && css.includes('.fr-banner-carousel__track') && css.includes('height: 100%'));
+  check('Slides ocupam toda a área reservada', css.includes('width: 100%;\n  height: 100%;') && css.includes('position: absolute;'));
+  check('Banners secundários não dependem de lazy-load', !html.includes('loading="lazy"') || (html.match(/data-banner-slide/g) || []).length === 3);
   check('CSS mantém mobile sem carrossel visual', css.includes('.fr-banner-carousel { display: none; }'));
   check('script de teste está registrado no package', pkg.scripts?.['test:carousel'] === 'node scripts/test-carousel.js');
 

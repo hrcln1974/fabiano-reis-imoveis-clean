@@ -1,6 +1,6 @@
 {
   "name": "fabiano-reis-imoveis",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Site imobiliário independente e pronto para produção, com catálogo, painel administrativo, leads, CRM e gestão de mídia.",
   "main": "server.js",
   "engines": {
