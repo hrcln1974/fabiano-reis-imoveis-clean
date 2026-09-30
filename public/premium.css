@@ -184,11 +184,11 @@ img { max-width: 100%; height: auto; }
   margin-left: 2px;
   border-radius: 50%;
   color: currentColor;
-  opacity: .62;
+  opacity: .82;
   text-decoration: none;
   transition: opacity .18s var(--fr-ease), background-color .18s var(--fr-ease), transform .18s var(--fr-ease);
 }
-.fr-admin-lock svg { width: 16px; height: 16px; display: block; }
+.fr-admin-lock svg { width: 17px; height: 17px; display: block; }
 .fr-admin-lock:hover,
 .fr-admin-lock:focus-visible {
   opacity: 1;
