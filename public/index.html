@@ -52,21 +52,60 @@
     </div>
   </nav>
 
-  <!-- BANNER PRINCIPAL — arte horizontal no desktop e arte quadrada no celular -->
- <section id="inicio" class="banner fr-banner-premium" aria-labelledby="hero-title">
-  <picture>
-    <source
-      media="(max-width: 768px)"
-      srcset="/uploads/imagens/fabiano.png"
-    >
+  <!-- BANNER PRINCIPAL — carrossel automático no desktop e banner mobile dedicado -->
+  <section id="inicio" class="banner fr-banner-premium" aria-labelledby="hero-title">
+    <div
+      class="fr-banner-carousel"
+      data-banner-carousel
+      aria-label="Banners principais da Fabiano Reis Imóveis"
+      tabindex="0">
+      <div class="fr-banner-carousel__viewport">
+        <div class="fr-banner-carousel__track" data-banner-track>
+          <div class="fr-banner-carousel__slide is-active" data-banner-slide aria-hidden="false">
+            <img
+              src="/uploads/imagens/banner-alto-padrao.png"
+              class="banner-img"
+              alt="Fabiano Reis Imóveis — corretor imobiliário CRECI-RJ 93.426"
+              fetchpriority="high"
+              decoding="async">
+          </div>
+          <div class="fr-banner-carousel__slide" data-banner-slide aria-hidden="true">
+            <img
+              src="/uploads/imagens/banner-alto-padrao2.png"
+              class="banner-img"
+              alt="Fabiano Reis Imóveis — seu novo capítulo começa aqui"
+              loading="lazy"
+              decoding="async">
+          </div>
+          <div class="fr-banner-carousel__slide" data-banner-slide aria-hidden="true">
+            <img
+              src="/uploads/imagens/banner-alto-padrao3.png"
+              class="banner-img"
+              alt="Fabiano Reis Imóveis — serra, qualidade e confiança"
+              loading="lazy"
+              decoding="async">
+          </div>
+        </div>
+      </div>
 
-    <img
-      src="/uploads/imagens/banner-alto-padrao.png"
-      class="banner-img"
-      alt="Fabiano Reis Imóveis"
-      fetchpriority="high"
-      decoding="async">
-  </picture>
+      <button type="button" class="fr-banner-carousel__control fr-banner-carousel__control--prev" data-banner-prev aria-label="Banner anterior">
+        <span aria-hidden="true">‹</span>
+      </button>
+      <button type="button" class="fr-banner-carousel__control fr-banner-carousel__control--next" data-banner-next aria-label="Próximo banner">
+        <span aria-hidden="true">›</span>
+      </button>
+
+      <div class="fr-banner-carousel__dots" data-banner-dots aria-label="Selecionar banner"></div>
+      <p class="sr-only" data-banner-status aria-live="polite">Banner 1 de 3</p>
+    </div>
+
+    <div class="fr-banner-mobile" aria-hidden="true">
+      <img
+        src="/uploads/imagens/fabiano.png"
+        class="banner-img"
+        alt=""
+        decoding="async">
+    </div>
 
     <h1 id="hero-title" class="sr-only">Fabiano Reis Imóveis — compra, venda e aluguel de imóveis (CRECI-RJ 93.426)</h1>
   </section>

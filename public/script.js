@@ -19,6 +19,83 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#96;');
 }
+
+// ============= CARROSSEL DE BANNERS =============
+// Somente apresentação: não depende da API nem altera as funções do site.
+function configurarCarrosselBanners() {
+  const root = document.querySelector('[data-banner-carousel]');
+  if (!root) return;
+
+  const slides = Array.from(root.querySelectorAll('[data-banner-slide]'));
+  const prev = root.querySelector('[data-banner-prev]');
+  const next = root.querySelector('[data-banner-next]');
+  const dots = root.querySelector('[data-banner-dots]');
+  const status = root.querySelector('[data-banner-status]');
+  if (slides.length < 2) return;
+
+  let index = slides.findIndex(slide => slide.classList.contains('is-active'));
+  if (index < 0) index = 0;
+  let timer = null;
+  let paused = false;
+
+  const render = (nextIndex) => {
+    index = (nextIndex + slides.length) % slides.length;
+    slides.forEach((slide, i) => {
+      const active = i === index;
+      slide.classList.toggle('is-active', active);
+      slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
+    root.querySelectorAll('[data-banner-dot]').forEach((dot, i) => {
+      const active = i === index;
+      dot.classList.toggle('is-active', active);
+      dot.setAttribute('aria-current', active ? 'true' : 'false');
+    });
+    if (status) status.textContent = `Banner ${index + 1} de ${slides.length}`;
+  };
+
+  if (dots) {
+    slides.forEach((_, i) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'fr-banner-carousel__dot';
+      dot.dataset.bannerDot = '';
+      dot.setAttribute('aria-label', `Ir para o banner ${i + 1}`);
+      dot.addEventListener('click', () => {
+        render(i);
+        iniciar();
+      });
+      dots.appendChild(dot);
+    });
+  }
+
+  const parar = () => {
+    if (timer) {
+      window.clearInterval(timer);
+      timer = null;
+    }
+  };
+
+  const iniciar = () => {
+    parar();
+    if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    timer = window.setInterval(() => render(index + 1), 5500);
+  };
+
+  const anterior = () => { render(index - 1); iniciar(); };
+  const proximo = () => { render(index + 1); iniciar(); };
+
+  prev?.addEventListener('click', anterior);
+  next?.addEventListener('click', proximo);
+  root.addEventListener('mouseenter', () => { paused = true; parar(); });
+  root.addEventListener('mouseleave', () => { paused = false; iniciar(); });
+  root.addEventListener('focusin', () => { paused = true; parar(); });
+  root.addEventListener('focusout', (event) => {
+    if (!root.contains(event.relatedTarget)) { paused = false; iniciar(); }
+  });
+
+  render(index);
+  iniciar();
+}
 function moeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -35,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ano = document.getElementById('ano-atual');
   if (ano) ano.textContent = String(new Date().getFullYear());
   carregarImoveis();
+  configurarCarrosselBanners();
   configurarFormularios();
   configurarFiltros();
   carregarDepoimentos();

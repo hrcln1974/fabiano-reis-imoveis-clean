@@ -122,6 +122,8 @@ const allowed = new Set([
   '.gitkeep',
   'foto-corretor-v5.png',
   'banner-alto-padrao.png',
+  'banner-alto-padrao2.png',
+  'banner-alto-padrao3.png',
   'fabiano.png'
 ]);
 

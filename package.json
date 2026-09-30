@@ -12,6 +12,7 @@
     "check": "node preflight.js",
     "test:smoke": "node scripts/smoke-test.js",
     "test:share": "node scripts/test-share-preview.js",
+    "test:carousel": "node scripts/test-carousel.js",
     "build:release": "node scripts/build-release.js",
     "admin:create": "node scripts/create-admin.js",
     "start:prod": "NODE_ENV=production node server.js",
