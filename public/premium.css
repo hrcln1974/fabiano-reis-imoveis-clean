@@ -183,12 +183,22 @@ img { max-width: 100%; height: auto; }
   height: 30px;
   margin-left: 2px;
   border-radius: 50%;
-  color: currentColor;
-  opacity: .82;
+  color: #ffffff;
+  opacity: .9;
   text-decoration: none;
-  transition: opacity .18s var(--fr-ease), background-color .18s var(--fr-ease), transform .18s var(--fr-ease);
+  transition:
+    opacity .18s var(--fr-ease),
+    background-color .18s var(--fr-ease),
+    transform .18s var(--fr-ease);
 }
-.fr-admin-lock svg { width: 17px; height: 17px; display: block; }
+
+.fr-admin-lock svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+  color: #ffffff;
+  stroke: currentColor;
+}
 .fr-admin-lock:hover,
 .fr-admin-lock:focus-visible {
   opacity: 1;
